@@ -641,6 +641,76 @@ process.stdin.on('end', () => {
           spinner.start(chalk.blue(`[${progress}%] Processing: ${hash.substring(0, 8)} - "${commitInfo.message}"`));
         }
 
+        // Show verbose information about the commit
+        if (this.options.verbose) {
+          spinner.stop();
+          console.log(chalk.gray('\n' + '═'.repeat(80)));
+          console.log(chalk.yellow(`📋 Commit: ${hash.substring(0, 8)}`));
+          console.log(chalk.gray(`Original message: ${commitInfo.message}`));
+          console.log(chalk.gray(`Files changed (${commitInfo.files.length}):`));
+          commitInfo.files.forEach(file => {
+            console.log(chalk.gray(`  • ${file}`));
+          });
+          
+          // Show diff preview (truncated if too long)
+          const diffLines = commitInfo.diff.split('\n');
+          const maxDiffLines = 50;
+          const diffSize = Buffer.byteLength(commitInfo.diff, 'utf8');
+          
+          console.log(chalk.gray(`\n📝 Diff preview (${diffSize} bytes, ${diffLines.length} lines):`));
+          
+          if (diffLines.length <= maxDiffLines) {
+            // Show full diff if small enough
+            console.log(chalk.gray('─'.repeat(40)));
+            diffLines.forEach(line => {
+              if (line.startsWith('+') && !line.startsWith('+++')) {
+                console.log(chalk.green(line));
+              } else if (line.startsWith('-') && !line.startsWith('---')) {
+                console.log(chalk.red(line));
+              } else if (line.startsWith('@@')) {
+                console.log(chalk.cyan(line));
+              } else {
+                console.log(chalk.gray(line));
+              }
+            });
+            console.log(chalk.gray('─'.repeat(40)));
+          } else {
+            // Show truncated diff for large changes
+            console.log(chalk.gray('─'.repeat(40)));
+            const preview = diffLines.slice(0, 30);
+            preview.forEach(line => {
+              if (line.startsWith('+') && !line.startsWith('+++')) {
+                console.log(chalk.green(line));
+              } else if (line.startsWith('-') && !line.startsWith('---')) {
+                console.log(chalk.red(line));
+              } else if (line.startsWith('@@')) {
+                console.log(chalk.cyan(line));
+              } else {
+                console.log(chalk.gray(line));
+              }
+            });
+            console.log(chalk.yellow(`\n... truncated ${diffLines.length - 30} lines ...\n`));
+            
+            // Show last 10 lines
+            const tail = diffLines.slice(-10);
+            tail.forEach(line => {
+              if (line.startsWith('+') && !line.startsWith('+++')) {
+                console.log(chalk.green(line));
+              } else if (line.startsWith('-') && !line.startsWith('---')) {
+                console.log(chalk.red(line));
+              } else if (line.startsWith('@@')) {
+                console.log(chalk.cyan(line));
+              } else {
+                console.log(chalk.gray(line));
+              }
+            });
+            console.log(chalk.gray('─'.repeat(40)));
+          }
+          
+          console.log(chalk.blue('\n🤖 Sending to AI for analysis...'));
+          spinner.start(chalk.blue('Generating commit message...'));
+        }
+
         // Generate new message with AI
         const newMessage = await this.generateCommitMessage(commitInfo.diff, commitInfo.files, commitInfo.message);
         
