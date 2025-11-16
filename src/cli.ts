@@ -159,6 +159,7 @@ program
   .option('-l, --language <lang>', 'Language for commit messages (default: "en")', 'en')
   .option('-p, --prompt <text>', 'Custom prompt for AI message generation (overrides default instructions)')
   .option('--staged', 'Generate a message for staged changes (for git hooks)')
+  .option('-q, --quiet', 'Suppress all informational output (useful for git hooks)')
   .option('--skip-remote-consent', 'Skip consent prompt for remote API calls (not recommended, use only in automated contexts)')
   .option('--install-hooks', 'Install AI commit message hooks (pre-commit and prepare-commit-msg)')
   .action(async (options) => {
@@ -183,7 +184,8 @@ program
         process.exit(1);
       }
       
-      if (provider === 'ollama') {
+      // Only show informational messages when NOT in quiet mode
+      if (provider === 'ollama' && !options.quiet) {
         console.log(chalk.blue('ℹ️  Using Ollama provider at ' + (options.ollamaUrl || 'http://localhost:11434')));
         console.log(chalk.gray('   Make sure Ollama is running: ollama serve'));
       }
@@ -196,6 +198,7 @@ program
         branch: options.branch,
         dryRun: options.dryRun,
         verbose: options.verbose,
+        quiet: options.quiet,
         maxCommits: options.maxCommits,
         skipBackup: options.skipBackup,
         skipWellFormed: options.skipWellFormed !== false,

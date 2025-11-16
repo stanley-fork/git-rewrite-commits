@@ -14,6 +14,7 @@ export interface RewriteOptions {
   branch?: string;
   dryRun?: boolean;
   verbose?: boolean;
+  quiet?: boolean; // Suppress all informational output
   maxCommits?: number;
   skipBackup?: boolean;
   skipWellFormed?: boolean;
@@ -76,13 +77,18 @@ export class GitCommitRewriter {
   }
 
   private async askConfirmation(question: string): Promise<boolean> {
+    // In quiet mode, skip all confirmation prompts and return false (safe default)
+    if (this.options.quiet) {
+      return false;
+    }
+
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
 
     return new Promise((resolve) => {
-      rl.question(chalk.yellow(`${question} (y/n): `), (answer: string) => {
+      rl.question(chalk.yellow(question + ' (y/n): '), (answer) => {
         rl.close();
         resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
       });
@@ -200,6 +206,12 @@ export class GitCommitRewriter {
     // Skip consent if explicitly disabled (for hook usage)
     if (this.options.skipRemoteConsent) {
       return true;
+    }
+
+    // In quiet mode without explicit consent skip, fail safe
+    if (this.options.quiet) {
+      // Quiet mode needs explicit --skip-remote-consent to proceed
+      return false; 
     }
 
     console.log(chalk.yellow.bold('\n⚠️  Data Privacy Notice'));
@@ -550,20 +562,26 @@ process.stdin.on('end', () => {
   }
 
   public async rewrite(): Promise<void> {
-    console.log(chalk.cyan.bold('\n🚀 git-rewrite-commits\n'));
+    if (!this.options.quiet) {
+      console.log(chalk.cyan.bold('\n🚀 git-rewrite-commits\n'));
+    }
 
     // Check git repository
     this.checkGitRepository();
 
     // Get current branch
     const currentBranch = this.getCurrentBranch();
-    console.log(chalk.blue(`Current branch: ${currentBranch}`));
+    if (!this.options.quiet) {
+      console.log(chalk.blue(`Current branch: ${currentBranch}`));
+    }
 
     // Check for uncommitted changes
     const status = this.checkUncommittedChanges();
     if (status) {
-      console.log(chalk.yellow('\n⚠️  Warning: You have uncommitted changes!'));
-      console.log(chalk.yellow('Please commit or stash them before proceeding.'));
+      if (!this.options.quiet) {
+        console.log(chalk.yellow('\n⚠️  Warning: You have uncommitted changes!'));
+        console.log(chalk.yellow('Please commit or stash them before proceeding.'));
+      }
       const proceed = await this.askConfirmation('Do you want to continue anyway?');
       if (!proceed) {
         process.exit(0);
@@ -572,10 +590,14 @@ process.stdin.on('end', () => {
 
     // Get commits
     const commits = this.getCommits();
-    console.log(chalk.green(`\nFound ${commits.length} commits to process`));
+    if (!this.options.quiet) {
+      console.log(chalk.green(`\nFound ${commits.length} commits to process`));
+    }
 
     if (commits.length === 0) {
-      console.log(chalk.yellow('No commits found to process.'));
+      if (!this.options.quiet) {
+        console.log(chalk.yellow('No commits found to process.'));
+      }
       return;
     }
 
@@ -587,16 +609,20 @@ process.stdin.on('end', () => {
 
     // Warning about rewriting history
     if (!this.options.dryRun) {
-      console.log(chalk.red.bold('\n⚠️  WARNING: This will REWRITE your git history!'));
-      console.log(chalk.red('This is dangerous if you have already pushed to a remote repository.'));
-      console.log(chalk.yellow('Make sure to:'));
-      console.log(chalk.yellow('  1. Work on a separate branch'));
-      console.log(chalk.yellow('  2. Have a backup of your repository'));
-      console.log(chalk.yellow('  3. Coordinate with your team if this is a shared repository'));
+      if (!this.options.quiet) {
+        console.log(chalk.red.bold('\n⚠️  WARNING: This will REWRITE your git history!'));
+        console.log(chalk.red('This is dangerous if you have already pushed to a remote repository.'));
+        console.log(chalk.yellow('Make sure to:'));
+        console.log(chalk.yellow('  1. Work on a separate branch'));
+        console.log(chalk.yellow('  2. Have a backup of your repository'));
+        console.log(chalk.yellow('  3. Coordinate with your team if this is a shared repository'));
+      }
 
       const confirm = await this.askConfirmation('\nDo you want to proceed?');
       if (!confirm) {
-        console.log(chalk.yellow('Operation cancelled.'));
+        if (!this.options.quiet) {
+          console.log(chalk.yellow('Operation cancelled.'));
+        }
         process.exit(0);
       }
     }
@@ -605,7 +631,9 @@ process.stdin.on('end', () => {
     let backupBranch: string | undefined;
     if (!this.options.skipBackup && !this.options.dryRun) {
       backupBranch = this.createBackupBranch(currentBranch);
-      console.log(chalk.green(`\n✅ Created backup branch: ${backupBranch}`));
+      if (!this.options.quiet) {
+        console.log(chalk.green(`\n✅ Created backup branch: ${backupBranch}`));
+      }
     }
 
     // Process commits
@@ -613,7 +641,9 @@ process.stdin.on('end', () => {
     const counterFile = path.join(process.cwd(), '.git', 'commit-counter.txt');
     const messageMap: { [hash: string]: string } = {};
 
-    console.log(chalk.cyan('\n📝 Generating new commit messages with AI...\n'));
+    if (!this.options.quiet) {
+      console.log(chalk.cyan('\n📝 Generating new commit messages with AI...\n'));
+    }
 
     const spinner = ora();
     let skippedCount = 0;
@@ -743,60 +773,87 @@ process.stdin.on('end', () => {
     }
 
     fs.writeFileSync(mappingFile, JSON.stringify(orderedMessages, null, 2));
-    console.log(chalk.green(`\n✅ Saved ${orderedMessages.length} commit messages`));
+    if (!this.options.quiet) {
+      console.log(chalk.green(`\n✅ Saved ${orderedMessages.length} commit messages`));
+    }
 
     // Enhanced Summary
     const changedCount = Object.keys(messageMap).length;
-    console.log(chalk.cyan('\n📊 Summary:'));
-    console.log(chalk.blue(`  • Total commits analyzed: ${commits.length}`));
-    if (this.options.skipWellFormed) {
-      console.log(chalk.cyan(`  • Well-formed commits (skipped): ${skippedCount}`));
+    if (!this.options.quiet) {
+      console.log(chalk.cyan('\n📊 Summary:'));
     }
-    console.log(chalk.green(`  • Commits improved: ${improvedCount}`));
-    console.log(chalk.yellow(`  • Commits to be rewritten: ${changedCount}`));
+    if (!this.options.quiet) {
+      console.log(chalk.blue(`  • Total commits analyzed: ${commits.length}`));
+      if (this.options.skipWellFormed) {
+        console.log(chalk.cyan(`  • Well-formed commits (skipped): ${skippedCount}`));
+      }
+      console.log(chalk.green(`  • Commits improved: ${improvedCount}`));
+      console.log(chalk.yellow(`  • Commits to be rewritten: ${changedCount}`));
+    }
 
     if (changedCount === 0) {
-      if (skippedCount > 0) {
-        console.log(chalk.green('\n✨ All commits are already well-formed! No changes needed.'));
-      } else {
-        console.log(chalk.yellow('\nNo commit messages to change. Exiting.'));
+      if (!this.options.quiet) {
+        if (skippedCount > 0) {
+          console.log(chalk.green('\n✨ All commits are already well-formed! No changes needed.'));
+        } else {
+          console.log(chalk.yellow('\n⚠️  No commits were changed.'));
+        }
+        console.log(chalk.gray('Tip: Use --no-skip-well-formed to force rewriting all commits'));
+      }
+      if (backupBranch) {
+        this.execCommand(`git branch -D ${backupBranch}`);
+        if (!this.options.quiet) {
+          console.log(chalk.gray(`Removed unnecessary backup branch: ${backupBranch}`));
+        }
       }
       return;
     }
 
     // Apply changes
     if (this.options.dryRun) {
-      console.log(chalk.yellow('\n🔍 Dry run completed. No changes were made to your repository.'));
-      console.log(chalk.blue('Review the proposed changes above and run without --dry-run to apply them.'));
+      if (!this.options.quiet) {
+        console.log(chalk.yellow('\n🔍 Dry run completed. No changes were made to your repository.'));
+        console.log(chalk.blue('Review the proposed changes above and run without --dry-run to apply them.'));
+      }
       return;
     }
 
     const rewrite = await this.askConfirmation('\nDo you want to apply the new commit messages?');
     if (!rewrite) {
-      console.log(chalk.yellow('Rewrite cancelled. Your history remains unchanged.'));
+      if (!this.options.quiet) {
+        console.log(chalk.yellow('Rewrite cancelled. Your history remains unchanged.'));
+      }
       if (backupBranch) {
-        console.log(chalk.blue(`You can restore from backup branch: ${backupBranch}`));
+        if (!this.options.quiet) {
+          console.log(chalk.blue(`You can restore from backup branch: ${backupBranch}`));
+        }
       }
       return;
     }
 
-    console.log(chalk.cyan('\n🔄 Rewriting git history...'));
+    if (!this.options.quiet) {
+      console.log(chalk.cyan('\n🔄 Rewriting git history...'));
+    }
     
     try {
       await this.rewriteHistory(mappingFile, counterFile);
       
-      console.log(chalk.green.bold('\n✅ Successfully rewrote git history!'));
-      console.log(chalk.yellow.bold('\n📌 Important next steps:'));
-      console.log(chalk.yellow('  1. Review the changes: git log --oneline'));
-      console.log(chalk.yellow('  2. If satisfied, force push: git push --force-with-lease'));
-      if (backupBranch) {
-        console.log(chalk.yellow(`  3. If something went wrong, restore: git reset --hard ${backupBranch}`));
-        console.log(chalk.yellow(`  4. Clean up backup when done: git branch -D ${backupBranch}`));
+      if (!this.options.quiet) {
+        console.log(chalk.green.bold('\n✅ Successfully rewrote git history!'));
+        console.log(chalk.yellow.bold('\n📌 Important next steps:'));
+        console.log(chalk.yellow('  1. Review the changes: git log --oneline'));
+        console.log(chalk.yellow('  2. If satisfied, force push: git push --force-with-lease'));
+        if (backupBranch) {
+          console.log(chalk.yellow(`  3. If something went wrong, restore: git reset --hard ${backupBranch}`));
+          console.log(chalk.yellow(`  4. Clean up backup when done: git branch -D ${backupBranch}`));
+        }
       }
     } catch (error: any) {
-      console.log(chalk.red(`\n❌ Error rewriting history: ${error.message}`));
-      if (backupBranch) {
-        console.log(chalk.yellow(`You can restore from backup: git reset --hard ${backupBranch}`));
+      if (!this.options.quiet) {
+        console.log(chalk.red(`\n❌ Error rewriting history: ${error.message}`));
+        if (backupBranch) {
+          console.log(chalk.yellow(`You can restore from backup: git reset --hard ${backupBranch}`));
+        }
       }
       throw error;
     }

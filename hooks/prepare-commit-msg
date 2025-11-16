@@ -103,9 +103,9 @@ if [ -z "$COMMIT_SOURCE" ]; then
             
             # Try to use locally installed version first, otherwise use npx
             if command -v git-rewrite-commits >/dev/null 2>&1; then
-                set -- git-rewrite-commits --staged --provider "$PROVIDER" --skip-remote-consent
+                set -- git-rewrite-commits --staged --quiet --provider "$PROVIDER" --skip-remote-consent
             else
-                set -- npx git-rewrite-commits --staged --provider "$PROVIDER" --skip-remote-consent
+                set -- npx git-rewrite-commits --staged --quiet --provider "$PROVIDER" --skip-remote-consent
             fi
             
             # Add model if configured (via environment variable or git config)

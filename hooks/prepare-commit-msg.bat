@@ -116,12 +116,12 @@ if %ERRORLEVEL% NEQ 0 (
     echo 🤖 Generating AI-powered commit message... >&2
     
     REM Build command
-    set "CMD=npx git-rewrite-commits --staged --provider %PROVIDER% --skip-remote-consent"
+    set "CMD=npx git-rewrite-commits --staged --quiet --provider %PROVIDER% --skip-remote-consent"
     
     REM Check if globally installed
     where git-rewrite-commits >nul 2>nul
     if %ERRORLEVEL% EQU 0 (
-        set "CMD=git-rewrite-commits --staged --provider %PROVIDER% --skip-remote-consent"
+        set "CMD=git-rewrite-commits --staged --quiet --provider %PROVIDER% --skip-remote-consent"
     )
     
     REM Add model if configured
