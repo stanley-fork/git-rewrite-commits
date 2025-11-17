@@ -73,6 +73,7 @@ ollama serve
 - **Efficient processing** - Process only the last N commits with `--max-commits`
 - **Dry-run mode** - Preview changes before applying them
 - **Progress tracking** - Real-time progress indicators with colored output
+- **Custom context** - Project-specific guidelines via `COMMIT_MESSAGE.md` file
 
 ## Installation
 
@@ -161,41 +162,66 @@ git config hooks.providerModel "gpt-4"  # or "gpt-3.5-turbo", "llama3.2", etc.
 git config hooks.ollamaUrl "http://192.168.1.100:11434"
 ```
 
+### Custom Project Guidelines with `COMMIT_MESSAGE.md`
+
+You can provide project-specific commit message guidelines that the AI will follow by creating a `COMMIT_MESSAGE.md` file. The tool searches for this file in the following locations (in order):
+
+1. **Project root** - `./COMMIT_MESSAGE.md`
+2. **Git directory** - `./.git/COMMIT_MESSAGE.md`
+3. **GitHub directory** - `./.github/COMMIT_MESSAGE.md`
+
+Example `COMMIT_MESSAGE.md`:
+```markdown
+# Project Commit Guidelines
+
+## Requirements
+- Use conventional commits with these scopes: auth, api, ui, db
+- Include ticket numbers when available (e.g., JIRA-123)
+- Security changes must be clearly marked
+- Breaking changes need BREAKING CHANGE in the message
+
+## Project Context
+This is a financial services API that handles sensitive data.
+Emphasize security, compliance, and performance in commit messages.
+```
+
+See [`COMMIT_MESSAGE.md.example`](COMMIT_MESSAGE.md.example) in this repository for a complete example.
+
 ## Usage
 
 ### Command Examples
 
 ```bash
 # Using the full command name
-git-rewrite-commits [options]
+npx git-rewrite-commits [options]
 
 # Or using the short alias (grec)
-grec [options]
+npx grec [options]
 ```
 
 Common use cases:
 
 ```bash
 # Rewrite entire git history
-grec
+npx git-rewrite-commits
 
 # Preview changes without applying (dry run)
-grec --dry-run
+npx git-rewrite-commits --dry-run
 
 # Generate commit message for staged changes
-grec --staged
+npx git-rewrite-commits --staged
 
 # Process only last 10 commits
-grec --max-commits 10
+npx git-rewrite-commits --max-commits 10
 
 # Use custom AI model
-grec --model gpt-4
+npx git-rewrite-commits --model gpt-4
 
 # Use local AI with Ollama
-grec --provider ollama
+npx git-rewrite-commits --provider ollama
 
 # Install/update git hooks
-grec --install-hooks
+npx git-rewrite-commits --install-hooks
 ```
 
 ## Real-World Examples

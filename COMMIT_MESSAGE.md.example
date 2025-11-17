@@ -1,0 +1,41 @@
+# Commit Message Guidelines
+
+This file provides project-specific context for AI-generated commit messages.
+Place this file as `COMMIT_MESSAGE.md` in one of these locations (searched in order):
+1. Project root directory
+2. `.git/` directory
+3. `.github/` directory
+
+## Project Context
+
+This is a git commit history rewriter tool that helps developers improve their commit messages using AI.
+
+## Commit Message Requirements
+
+- Always use conventional commit format: `type(scope): description`
+- Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+- Scopes for this project: cli, hooks, providers, core, docs
+- Keep the first line under 72 characters
+- Write in present tense ("add" not "added")
+- Focus on what and why, not how
+
+## Project-Specific Guidelines
+
+- When changing git hooks, mention which hooks are affected
+- When updating providers, specify which AI provider (OpenAI/Ollama)
+- Security-related changes should be clearly marked
+- Breaking changes should include BREAKING CHANGE in the message
+
+## Examples
+
+Good commit messages for this project:
+- `feat(hooks): add support for custom Ollama server URLs`
+- `fix(core): prevent console output from contaminating commit messages`
+- `docs(readme): add blog post link and improve security section`
+- `refactor(providers): split provider implementations into separate files`
+
+## Additional Notes
+
+- This tool is security-sensitive as it handles git history
+- Consider privacy implications when mentioning data handling
+- Emphasize user control and opt-in features

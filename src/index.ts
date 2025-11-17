@@ -310,6 +310,35 @@ export class GitCommitRewriter {
     return redacted;
   }
 
+  private findCommitMessageContext(): string | null {
+    // Search for COMMIT_MESSAGE.md in order of priority:
+    // 1. Current root directory
+    // 2. .git directory
+    // 3. .github directory
+    const searchPaths = [
+      path.join(process.cwd(), 'COMMIT_MESSAGE.md'),
+      path.join(process.cwd(), '.git', 'COMMIT_MESSAGE.md'),
+      path.join(process.cwd(), '.github', 'COMMIT_MESSAGE.md'),
+    ];
+
+    for (const filePath of searchPaths) {
+      try {
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          if (this.options.verbose && !this.options.quiet) {
+            console.log(chalk.blue(`📝 Found custom commit message context at: ${path.relative(process.cwd(), filePath)}`));
+          }
+          return content.trim();
+        }
+      } catch (error) {
+        // Continue searching if file can't be read
+        continue;
+      }
+    }
+
+    return null;
+  }
+
   private async generateCommitMessage(
     diff: string,
     files: string[],
@@ -318,6 +347,9 @@ export class GitCommitRewriter {
     try {
       // Redact sensitive data from diff before sending to AI provider
       const redactedDiff = this.redactSensitivePatterns(diff);
+      
+      // Look for custom commit message context
+      const customContext = this.findCommitMessageContext();
       
       let formatInstructions = '';
       
@@ -350,7 +382,7 @@ Example: If template is "[JIRA-XXX] type: message", generate something like "[JI
         // User provided custom prompt - use it with basic context
         prompt = `You are a git commit message generator. Analyze the following git diff and file changes, then ${this.options.prompt}
 
-Old commit message: "${oldMessage}"
+${customContext ? `Project-specific guidelines:\n${customContext}\n\n` : ''}Old commit message: "${oldMessage}"
 
 Files changed:
 ${files.join('\n')}
@@ -366,7 +398,7 @@ Return ONLY the commit message, nothing else.`;
         // Use default prompt with all standard instructions
         prompt = `You are a git commit message generator. Analyze the following git diff and file changes, then generate a clear, concise commit message.
 
-Old commit message: "${oldMessage}"
+${customContext ? `Project-specific guidelines:\n${customContext}\n\n` : ''}Old commit message: "${oldMessage}"
 
 Files changed:
 ${files.join('\n')}
