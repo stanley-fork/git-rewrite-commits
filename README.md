@@ -84,6 +84,21 @@ npx git-rewrite-commits
 npx grec
 ```
 
+#### Very Quick Example
+
+Set `OPENAI_API_KEY` as environment variable. And:
+
+```bash
+git add -A
+git commit -m "$(npx -y grec --quiet --staged --skip-remote-consent)"
+
+> [main 9979e7e] feat(specs): update subscription status handling in webhook controller
+3 files changed, 432 insertions(+), 9 deletions(-)
+create mode 100644 spec/controllers/webhooks_spec.rb
+
+git push origin master
+```
+
 ### Global Installation
 ```bash
 # Full command name
